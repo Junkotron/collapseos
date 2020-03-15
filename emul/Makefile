@@ -1,5 +1,5 @@
 CFSPACK_OBJ = ../tools/cfspack/libcfs.o
-TARGETS = shell/shell zasm/zasm runbin/runbin forth/forth
+TARGETS = shell/shell zasm/zasm runbin/runbin
 KERNEL = ../kernel
 APPS = ../apps
 ZASMBIN = zasm/zasm
@@ -7,7 +7,7 @@ AVRABIN = zasm/avra
 SHELLAPPS = zasm ed
 SHELLTGTS = ${SHELLAPPS:%=cfsin/%}
 CFSIN_CONTENTS = $(SHELLTGTS) cfsin/user.h
-OBJS = emul.o libz80/libz80.o
+OBJS = emul.o dis.o dbg.o libz80/libz80.o
 SHELLOBJS = $(OBJS) $(CFSPACK_OBJ)
 ZASMOBJS = $(SHELLOBJS)
 
@@ -22,16 +22,7 @@ shell/shell-bin.h: shell/shell.bin
 	./bin2c.sh KERNEL < shell/shell.bin | tee $@ > /dev/null
 
 shell/shell: shell/shell.c $(SHELLOBJS) shell/shell-bin.h 
-	$(CC) shell/shell.c $(SHELLOBJS) -o $@
-
-forth/forth.bin: forth/glue.asm $(ZASMBIN)
-	$(ZASMBIN) $(KERNEL) $(APPS) < forth/glue.asm | tee $@ > /dev/null
-
-forth/forth-bin.h: forth/forth.bin
-	./bin2c.sh KERNEL < forth/forth.bin | tee $@ > /dev/null
-
-forth/forth: forth/forth.c $(OBJS) forth/forth-bin.h 
-	$(CC) forth/forth.c $(OBJS) -o $@
+	$(CC) -g shell/shell.c $(SHELLOBJS) -o $@
 
 zasm/kernel-bin.h: zasm/kernel.bin
 	./bin2c.sh KERNEL < zasm/kernel.bin | tee $@ > /dev/null
@@ -40,7 +31,7 @@ zasm/zasm-bin.h: zasm/zasm.bin
 	./bin2c.sh USERSPACE < zasm/zasm.bin | tee $@ > /dev/null
 
 $(ZASMBIN): zasm/zasm.c $(ZASMOBJS) zasm/kernel-bin.h zasm/zasm-bin.h
-	$(CC) zasm/zasm.c $(ZASMOBJS) -o $@
+	$(CC) -g zasm/zasm.c $(ZASMOBJS) -o $@
 
 zasm/avra.bin: $(ZASMBIN)
 	$(ZASMBIN) $(KERNEL) $(APPS) zasm/user.h < $(APPS)/zasm/gluea.asm > $@
@@ -49,17 +40,23 @@ zasm/avra-bin.h: zasm/avra.bin
 	./bin2c.sh USERSPACE < zasm/avra.bin | tee $@ > /dev/null
 
 $(AVRABIN): zasm/zasm.c $(ZASMOBJS) zasm/kernel-bin.h zasm/avra-bin.h
-	$(CC) -D AVRA zasm/zasm.c $(ZASMOBJS) -o $@
+	$(CC) -g -D AVRA zasm/zasm.c $(ZASMOBJS) -o $@
 
 runbin/runbin: runbin/runbin.c $(OBJS)
-	$(CC) runbin/runbin.c $(OBJS) -o $@
+	$(CC) -g runbin/runbin.c $(OBJS) -o $@
 
 libz80/libz80.o: libz80/z80.c
 	$(MAKE) -C libz80/codegen opcodes
-	$(CC) -Wall -ansi -g -c -o libz80/libz80.o libz80/z80.c
+	$(CC) -g -Wall -ansi -g -c -o libz80/libz80.o libz80/z80.c
 
 emul.o: emul.c
-	$(CC) -c -o emul.o emul.c
+	$(CC) -g -c -o emul.o emul.c
+
+dis.o: dis.c
+	$(CC) -g -c -o dis.o dis.c
+
+dbg.o: dbg.c
+	$(CC) -g -c -o dbg.o dbg.c
 
 $(CFSPACK_OBJ): ${@:%.o=%.c}
 	$(MAKE) -C ../tools/cfspack
@@ -71,6 +68,8 @@ $(SHELLTGTS): $(ZASMBIN)
 cfsin/user.h: shell/user.h
 	cp shell/user.h $@
 
+
+
 .PHONY: updatebootstrap
 updatebootstrap: $(ZASMBIN)
 	$(ZASMBIN) $(KERNEL) < zasm/glue.asm > zasm/kernel.bin
@@ -78,4 +77,4 @@ updatebootstrap: $(ZASMBIN)
 
 .PHONY: clean
 clean:
-	rm -f $(TARGETS) $(SHELLTGTS) emul.o zasm/*-bin.h shell/*-bin.h
+	rm -f $(TARGETS) $(SHELLTGTS) emul.o dis.o dbg.o zasm/*-bin.h shell/*-bin.h

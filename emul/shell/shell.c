@@ -47,6 +47,8 @@ static uint32_t fsdev_ptr = 0;
 static int  fsdev_addr_lvl = 0;
 static int running;
 
+static int dodbg=0;
+
 static uint8_t iord_stdio()
 {
     int c = getchar();
@@ -128,7 +130,7 @@ int main(int argc, char *argv[])
 {
     FILE *fp = NULL;
     while (1) {
-        int c = getopt(argc, argv, "f:");
+        int c = getopt(argc, argv, "f:g");
         if (c < 0) {
             break;
         }
@@ -151,6 +153,9 @@ int main(int argc, char *argv[])
                 }
                 pclose(fp);
                 break;
+	    case 'g':
+	        emul_set_dbg(1);
+		break;
             default:
                 fprintf(stderr, "Usage: shell [-f fsdev]\n");
                 return 1;

@@ -5,6 +5,18 @@ They all run on the same kind of virtual machine: A z80 CPU, 64K of RAM/ROM.
 
 #include <string.h>
 #include "emul.h"
+#include "dbg.h"
+
+static int dodbg=0;
+
+// Required by dbg.c, set to real value in emul_init
+unsigned CODE_LEN=-1;
+
+// Set by shell.c
+void emul_set_dbg(int mode)
+{
+  dodbg = mode;
+}
 
 static Machine m;
 
@@ -58,6 +70,7 @@ Machine* emul_init()
     m.cpu.memWrite = mem_write;
     m.cpu.ioRead = io_read;
     m.cpu.ioWrite = io_write;
+
     return &m;
 }
 
@@ -65,11 +78,19 @@ Machine* emul_init()
 bool emul_step()
 {
     if (!m.cpu.halted) {
-        Z80Execute(&m.cpu);
-        ushort newsp = m.cpu.R1.wr.SP;
-        if (newsp != 0 && newsp < m.minsp) {
-            m.minsp = newsp;
-        }
+	
+	if (dodbg) {
+	  run_prompt(&m);
+	}
+	else {
+	  Z80Execute(&m.cpu);
+	  
+	  ushort newsp = m.cpu.R1.wr.SP;
+	  if (newsp != 0 && newsp < m.minsp) {
+	    m.minsp = newsp;
+	  }
+	}
+	
         return true;
     } else {
         return false;
